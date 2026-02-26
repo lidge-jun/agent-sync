@@ -1,0 +1,35 @@
+{
+    "name": "agent-sync",
+    "version": "0.1.0",
+    "description": "Sync MCP, skills, and AGENTS.md across all AI coding agents (Claude, Codex, Copilot, Gemini, Antigravity, OpenCode)",
+    "type": "module",
+    "bin": {
+        "agent-sync": "./dist/cli.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsx src/cli.ts",
+        "test": "vitest run",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "ai",
+        "agent",
+        "mcp",
+        "sync",
+        "claude",
+        "copilot",
+        "codex",
+        "gemini"
+    ],
+    "license": "MIT",
+    "engines": {
+        "node": ">=18"
+    },
+    "devDependencies": {
+        "typescript": "^5.7",
+        "tsx": "^4.21",
+        "vitest": "^3.0",
+        "@types/node": "^22"
+    }
+}
