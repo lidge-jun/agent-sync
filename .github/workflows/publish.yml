@@ -1,0 +1,48 @@
+name: Publish to npm
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+
+      # Auto version bump (patch) — skips if version already bumped in commit
+      - name: Auto bump version
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          NPM_LATEST=$(npm view @bitkyc08/agent-sync version 2>/dev/null || echo "0.0.0")
+          if [ "$CURRENT" = "$NPM_LATEST" ]; then
+            echo "Version $CURRENT already published, bumping patch..."
+            npm version patch --no-git-tag-version
+            NEW_VER=$(node -p "require('./package.json').version")
+            # Also update VERSION constant in cli.ts
+            sed -i "s/const VERSION = '.*'/const VERSION = '${NEW_VER}'/" src/cli.ts
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "chore: auto bump to v${NEW_VER}"
+            git push
+          else
+            echo "Version $CURRENT differs from npm ($NPM_LATEST), using as-is."
+          fi
+
+      - run: npm run build
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
