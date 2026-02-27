@@ -9,7 +9,7 @@ All six agents are synced **simultaneously** with a single command — one confi
 ## Install
 
 ```bash
-npm install -g agent-sync
+npm install -g @bitkyc08/agent-sync
 ```
 
 ## Usage
