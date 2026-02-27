@@ -1,6 +1,6 @@
 {
     "name": "@bitkyc08/agent-sync",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "Sync MCP, skills, and AGENTS.md across all AI coding agents (Claude, Codex, Copilot, Gemini, Antigravity, OpenCode)",
     "type": "module",
     "bin": {
