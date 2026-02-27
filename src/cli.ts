@@ -10,6 +10,7 @@
  *   agent-sync all      Run all without prompts (uses detected defaults)
  */
 import fs from 'node:fs';
+import * as readline from 'node:readline';
 import { join } from 'node:path';
 import { log } from './utils/log.js';
 import { ask, choose } from './utils/prompt.js';
@@ -18,7 +19,7 @@ import { detectPromptFiles, generateAgentsMd } from './core/agents-md.js';
 import { detectSkillSources, syncSkills, listSkills } from './core/skill-sync.js';
 import { detectMcpConfigs, loadMcpConfig, saveMcpConfig, syncToAll, importFromClaude } from './core/mcp-sync.js';
 
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 const cwd = process.cwd();
 
 // ─── Subcommand routing ───────────────────────────
@@ -104,7 +105,7 @@ async function wizardAgents() {
         if (selection === 1) {
             console.log('');
             log.info('Enter your prompt content below.');
-            log.info('Press Ctrl+D (EOF) when done, or type "SKIP" to skip this step.\n');
+            log.info('Press Ctrl+D on empty line when done, or type "SKIP" to skip.\n');
             const content = await readMultiline();
             if (content.trim() === 'SKIP' || content.trim() === '') {
                 log.warn('Skipped AGENTS.md generation.');
@@ -141,7 +142,7 @@ async function wizardAgents() {
         generateAgentsMd(cwd, content);
     } else {
         // Manual input
-        log.info('Enter your prompt content (Ctrl+D to finish, "SKIP" to skip):');
+        log.info('Enter your prompt content (Ctrl+D on empty line to finish, "SKIP" to skip):');
         const content = await readMultiline();
         if (content.trim() === 'SKIP' || content.trim() === '') {
             log.warn('Skipped AGENTS.md generation.');
@@ -302,11 +303,19 @@ async function wizardMcp() {
 
 function readMultiline(): Promise<string> {
     return new Promise((resolve) => {
-        const chunks: string[] = [];
-        process.stdin.setEncoding('utf8');
-        process.stdin.on('data', (chunk) => chunks.push(String(chunk)));
-        process.stdin.on('end', () => resolve(chunks.join('')));
-        process.stdin.resume();
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+        });
+        const lines: string[] = [];
+        rl.on('line', (line: string) => {
+            lines.push(line);
+        });
+        rl.on('close', () => {
+            // Ctrl+D triggers 'close' on readline interface
+            // but does NOT destroy process.stdin (unlike raw stdin.on('end'))
+            resolve(lines.join('\n'));
+        });
     });
 }
 

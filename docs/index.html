@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>agent-sync — One Config. Six Agents.</title>
+    <meta name="description"
+        content="Sync MCP, skills, and AGENTS.md across all AI coding agents — Claude Code, Codex, Copilot, Gemini CLI, Antigravity, and OpenCode — with a single command.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        /* ── Reset ── */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --bg2: #0f0f0f;
+            --surface: #161616;
+            --surface2: #1c1c1c;
+            --border: #282828;
+            --border-light: #333;
+            --text: #ececec;
+            --text-dim: #777;
+            --text-muted: #555;
+            --accent: #f59e0b;
+            --accent2: #d97706;
+            --accent-light: #fbbf24;
+            --accent-glow: rgba(245, 158, 11, 0.15);
+            --accent-glow2: rgba(245, 158, 11, 0.06);
+            --green: #34d399;
+            --green-dim: rgba(52, 211, 153, 0.12);
+            --font-display: 'Syne', sans-serif;
+            --font-body: 'DM Sans', sans-serif;
+            --font-mono: 'Fira Code', monospace;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ── Noise Texture Overlay ── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Diagonal grid ── */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(30deg, rgba(245, 158, 11, 0.015) 1px, transparent 1px),
+                linear-gradient(-30deg, rgba(245, 158, 11, 0.015) 1px, transparent 1px);
+            background-size: 80px 80px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Utility ── */
+        .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .section {
+            padding: 120px 0;
+            position: relative;
+        }
+
+        .section-label {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-label::before {
+            content: '';
+            width: 24px;
+            height: 1px;
+            background: var(--accent);
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: clamp(28px, 4vw, 44px);
+            font-weight: 800;
+            margin-bottom: 16px;
+            line-height: 1.15;
+            letter-spacing: -0.5px;
+        }
+
+        .section-desc {
+            color: var(--text-dim);
+            font-size: 16px;
+            max-width: 560px;
+            margin-bottom: 56px;
+        }
+
+        /* ── Reveal Animation ── */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal-delay-1 {
+            transition-delay: 0.1s;
+        }
+
+        .reveal-delay-2 {
+            transition-delay: 0.2s;
+        }
+
+        .reveal-delay-3 {
+            transition-delay: 0.3s;
+        }
+
+        /* ═══════════════════════════════════════
+           HERO
+           ═══════════════════════════════════════ */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 80px 24px;
+            position: relative;
+        }
+
+        /* Warm radial glow */
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 900px;
+            height: 600px;
+            background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* Hub diagram */
+        .hub-diagram {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin-bottom: 40px;
+        }
+
+        .hub-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, var(--accent2), var(--accent-light));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 0 0 40px var(--accent-glow), 0 0 80px var(--accent-glow2);
+            animation: hubPulse 3s ease-in-out infinite;
+            z-index: 2;
+        }
+
+        @keyframes hubPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 40px var(--accent-glow), 0 0 80px var(--accent-glow2);
+            }
+
+            50% {
+                box-shadow: 0 0 60px rgba(245, 158, 11, 0.25), 0 0 120px var(--accent-glow);
+            }
+        }
+
+        .hub-node {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            background: var(--surface2);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            z-index: 2;
+            transition: all 0.3s ease;
+        }
+
+        .hub-node:hover {
+            border-color: var(--accent);
+            transform: scale(1.15);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .hub-node:nth-child(2) {
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .hub-node:nth-child(3) {
+            top: 18%;
+            right: 2%;
+        }
+
+        .hub-node:nth-child(4) {
+            bottom: 18%;
+            right: 2%;
+        }
+
+        .hub-node:nth-child(5) {
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .hub-node:nth-child(6) {
+            bottom: 18%;
+            left: 2%;
+        }
+
+        .hub-node:nth-child(7) {
+            top: 18%;
+            left: 2%;
+        }
+
+        .hub-node:nth-child(2):hover,
+        .hub-node:nth-child(5):hover {
+            transform: translateX(-50%) scale(1.15);
+        }
+
+        /* Animated SVG lines */
+        .hub-lines {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+        }
+
+        .hub-lines line {
+            stroke: var(--accent);
+            stroke-width: 1;
+            stroke-dasharray: 6 6;
+            opacity: 0.25;
+            animation: dashFlow 2s linear infinite;
+        }
+
+        @keyframes dashFlow {
+            to {
+                stroke-dashoffset: -24;
+            }
+        }
+
+        .hero-tagline {
+            font-family: var(--font-display);
+            font-size: clamp(32px, 5vw, 56px);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+
+        .hero-tagline .accent {
+            background: linear-gradient(135deg, var(--accent-light), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-sub {
+            color: var(--text-dim);
+            font-size: 17px;
+            margin-bottom: 36px;
+            max-width: 480px;
+            line-height: 1.6;
+        }
+
+        .hero-install {
+            margin-bottom: 24px;
+        }
+
+        .install-block {
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 28px;
+            font-family: var(--font-mono);
+            font-size: 15px;
+            color: var(--accent-light);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+
+        .install-block:hover {
+            border-color: var(--accent);
+            box-shadow: 0 4px 24px var(--accent-glow);
+        }
+
+        .install-block .dollar {
+            color: var(--text-muted);
+        }
+
+        .install-block .copy-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: var(--font-body);
+            padding: 4px 10px;
+            background: var(--bg);
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .install-block:hover .copy-hint {
+            color: var(--accent);
+        }
+
+        .install-block.copied .copy-hint {
+            color: var(--green);
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 28px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent2), var(--accent));
+            color: var(--bg);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .hero-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .hero-badges img {
+            height: 22px;
+            border-radius: 4px;
+        }
+
+        /* Scroll indicator */
+        .scroll-hint {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 10px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-family: var(--font-mono);
+            animation: scrollBounce 2.5s ease-in-out infinite;
+        }
+
+        .scroll-hint::after {
+            content: '';
+            width: 1px;
+            height: 28px;
+            background: linear-gradient(to bottom, var(--accent), transparent);
+        }
+
+        @keyframes scrollBounce {
+
+            0%,
+            100% {
+                transform: translateX(-50%) translateY(0);
+            }
+
+            50% {
+                transform: translateX(-50%) translateY(8px);
+            }
+        }
+
+        /* ═══════════════════════════════════════
+           HOW IT WORKS
+           ═══════════════════════════════════════ */
+        .how-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .how-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 36px 28px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.35s ease;
+        }
+
+        .how-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .how-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(245, 158, 11, 0.25);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+        }
+
+        .how-card:hover::before {
+            opacity: 1;
+        }
+
+        .how-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-glow);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+
+        .how-title {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .how-desc {
+            color: var(--text-dim);
+            font-size: 14px;
+            line-height: 1.65;
+        }
+
+        .how-scope {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 4px 12px;
+            background: var(--green-dim);
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--green);
+        }
+
+        /* Arrow connectors between cards */
+        .how-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 20px;
+        }
+
+        /* ═══════════════════════════════════════
+           AGENTS
+           ═══════════════════════════════════════ */
+        .agents-section {
+            position: relative;
+        }
+
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 16px;
+        }
+
+        .agent-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 28px 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .agent-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width 0.3s;
+        }
+
+        .agent-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(245, 158, 11, 0.3);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .agent-card:hover::after {
+            width: 60%;
+        }
+
+        .agent-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .agent-name {
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .agent-format {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .agent-path {
+            display: block;
+            margin-top: 10px;
+            padding: 6px 8px;
+            background: var(--bg);
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--text-dim);
+            word-break: break-all;
+        }
+
+        /* ═══════════════════════════════════════
+           QUICK START
+           ═══════════════════════════════════════ */
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .step-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 36px 28px;
+            position: relative;
+        }
+
+        .step-num {
+            position: absolute;
+            top: -16px;
+            left: 28px;
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent2), var(--accent));
+            color: var(--bg);
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 14px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .step-title {
+            font-family: var(--font-display);
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            margin-top: 4px;
+        }
+
+        .step-desc {
+            color: var(--text-dim);
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .code-block {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px 20px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--accent-light);
+            overflow-x: auto;
+            line-height: 1.9;
+        }
+
+        .code-block .dim {
+            color: var(--text-muted);
+        }
+
+        .code-block .comment {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* ═══════════════════════════════════════
+           MCP CONFIG TABLE
+           ═══════════════════════════════════════ */
+        .config-table-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .config-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .config-table thead {
+            background: var(--surface2);
+        }
+
+        .config-table th {
+            padding: 16px 20px;
+            text-align: left;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .config-table td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-dim);
+        }
+
+        .config-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .config-table tbody tr {
+            transition: background 0.2s;
+        }
+
+        .config-table tbody tr:hover {
+            background: var(--surface2);
+        }
+
+        .config-table .target-name {
+            font-family: var(--font-body);
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .config-table .target-path {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--accent);
+        }
+
+        .config-table .target-format {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            padding: 3px 8px;
+            background: var(--accent-glow);
+            border-radius: 4px;
+            color: var(--accent-light);
+            display: inline-block;
+        }
+
+        /* ═══════════════════════════════════════
+           CONFIG LOCATION
+           ═══════════════════════════════════════ */
+        .config-location {
+            margin-top: 48px;
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .config-info h3 {
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .config-info p {
+            color: var(--text-dim);
+            font-size: 14px;
+            line-height: 1.65;
+        }
+
+        .config-tree {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 2;
+            color: var(--text-dim);
+        }
+
+        .config-tree .folder {
+            color: var(--accent);
+        }
+
+        .config-tree .file {
+            color: var(--text);
+        }
+
+        .config-tree .note {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* ═══════════════════════════════════════
+           FOOTER
+           ═══════════════════════════════════════ */
+        .footer {
+            border-top: 1px solid var(--border);
+            padding: 60px 0;
+            text-align: center;
+        }
+
+        .footer-logo {
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .footer-logo .accent {
+            color: var(--accent);
+        }
+
+        .footer-tagline {
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-bottom: 24px;
+            font-family: var(--font-mono);
+            letter-spacing: 1px;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 32px;
+            justify-content: center;
+            margin-bottom: 28px;
+        }
+
+        .footer-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent);
+        }
+
+        .footer-copy {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        /* ═══════════════════════════════════════
+           RESPONSIVE
+           ═══════════════════════════════════════ */
+        @media (max-width: 900px) {
+            .how-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .agents-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .steps-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .config-location {
+                grid-template-columns: 1fr;
+            }
+
+            .hub-diagram {
+                width: 220px;
+                height: 220px;
+            }
+
+            .hub-center {
+                width: 56px;
+                height: 56px;
+                font-size: 22px;
+                border-radius: 14px;
+            }
+
+            .hub-node {
+                width: 36px;
+                height: 36px;
+                font-size: 15px;
+                border-radius: 10px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .agents-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .section {
+                padding: 80px 0;
+            }
+
+            .hero {
+                padding: 60px 16px;
+            }
+
+            .install-block {
+                font-size: 13px;
+                padding: 14px 20px;
+            }
+
+            .hub-diagram {
+                width: 200px;
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ═══════════════ HERO ═══════════════ -->
+    <section class="hero">
+        <div class="hub-diagram" id="hubDiagram">
+            <div class="hub-center">⚡</div>
+            <div class="hub-node" title="Claude Code">🟤</div>
+            <div class="hub-node" title="Codex">🟢</div>
+            <div class="hub-node" title="Copilot">🔵</div>
+            <div class="hub-node" title="Gemini CLI">🟡</div>
+            <div class="hub-node" title="OpenCode">🟣</div>
+            <div class="hub-node" title="Antigravity">🔴</div>
+            <svg class="hub-lines" id="hubLines"></svg>
+        </div>
+
+        <h1 class="hero-tagline">One Config.<br><span class="accent">Six Agents.</span></h1>
+        <p class="hero-sub">Sync MCP servers, skills, and AGENTS.md across every AI coding CLI — from a single source of
+            truth.</p>
+
+        <div class="hero-install">
+            <div class="install-block" id="installBlock" onclick="copyInstall()">
+                <span><span class="dollar">$</span> npm i -g agent-sync</span>
+                <span class="copy-hint" id="copyHint">copy</span>
+            </div>
+        </div>
+
+        <div class="hero-cta">
+            <a href="#quickstart" class="btn btn-primary">Get Started</a>
+            <a href="https://github.com/lidge-jun/agent-sync" class="btn btn-ghost" target="_blank">⭐ GitHub</a>
+        </div>
+
+        <div class="hero-badges">
+            <img src="https://img.shields.io/npm/v/@bitkyc08/agent-sync?color=f59e0b&label=npm&style=flat-square"
+                alt="npm">
+            <img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat-square&logo=typescript&logoColor=white"
+                alt="TypeScript">
+            <img src="https://img.shields.io/badge/node-%3E%3D18-339933?style=flat-square&logo=node.js&logoColor=white"
+                alt="Node">
+            <img src="https://img.shields.io/badge/license-MIT-444?style=flat-square" alt="MIT">
+        </div>
+
+        <div class="scroll-hint">scroll</div>
+    </section>
+
+    <!-- ═══════════════ HOW IT WORKS ═══════════════ -->
+    <section class="section" id="how">
+        <div class="container">
+            <span class="section-label reveal">how it works</span>
+            <h2 class="section-title reveal">Three Syncs,<br>Zero Hassle</h2>
+            <p class="section-desc reveal">agent-sync keeps your AI tool configuration consistent. Write once, sync
+                everywhere.</p>
+
+            <div class="how-grid">
+                <div class="how-card reveal">
+                    <div class="how-icon">📄</div>
+                    <h3 class="how-title">AGENTS.md</h3>
+                    <p class="how-desc">Auto-detects prompt files in your project — <code>AGENTS.md</code>,
+                        <code>CLAUDE.md</code>, <code>COPILOT.md</code> — and writes a unified AGENTS.md that every
+                        agent discovers automatically.</p>
+                    <span class="how-scope">project-level</span>
+                </div>
+                <div class="how-card reveal reveal-delay-1">
+                    <div class="how-icon">🔗</div>
+                    <h3 class="how-title">Skills Sync</h3>
+                    <p class="how-desc">Creates symlinks so all agents find the same skills. One
+                        <code>.agent/skills/</code> source powers <code>.agents/</code>, <code>.claude/</code>, and
+                        every other config directory.</p>
+                    <span class="how-scope">project-level</span>
+                </div>
+                <div class="how-card reveal reveal-delay-2">
+                    <div class="how-icon">🌐</div>
+                    <h3 class="how-title">MCP Config</h3>
+                    <p class="how-desc">One <code>~/.agent-sync/mcp.json</code> is the single source of truth. Synced to
+                        6 different CLI config files — JSON, TOML, and beyond.</p>
+                    <span class="how-scope">global</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ AGENTS ═══════════════ -->
+    <section class="section agents-section" id="agents">
+        <div class="container">
+            <span class="section-label reveal">supported agents</span>
+            <h2 class="section-title reveal">Works With<br>Every Major CLI</h2>
+            <p class="section-desc reveal">From Anthropic to OpenAI to Google — if it's an AI coding CLI, agent-sync has
+                it covered.</p>
+
+            <div class="agents-grid">
+                <div class="agent-card reveal">
+                    <span class="agent-icon">🟤</span>
+                    <div class="agent-name">Claude Code</div>
+                    <div class="agent-format">JSON</div>
+                    <span class="agent-path">~/.mcp.json</span>
+                </div>
+                <div class="agent-card reveal reveal-delay-1">
+                    <span class="agent-icon">🟢</span>
+                    <div class="agent-name">Codex</div>
+                    <div class="agent-format">TOML</div>
+                    <span class="agent-path">~/.codex/config.toml</span>
+                </div>
+                <div class="agent-card reveal reveal-delay-1">
+                    <span class="agent-icon">🔵</span>
+                    <div class="agent-name">Copilot</div>
+                    <div class="agent-format">JSON</div>
+                    <span class="agent-path">~/.copilot/mcp-config.json</span>
+                </div>
+                <div class="agent-card reveal reveal-delay-2">
+                    <span class="agent-icon">🟡</span>
+                    <div class="agent-name">Gemini CLI</div>
+                    <div class="agent-format">JSON</div>
+                    <span class="agent-path">~/.gemini/settings.json</span>
+                </div>
+                <div class="agent-card reveal reveal-delay-2">
+                    <span class="agent-icon">🔴</span>
+                    <div class="agent-name">Antigravity</div>
+                    <div class="agent-format">JSON</div>
+                    <span class="agent-path">~/.gemini/antigravity/mcp_config.json</span>
+                </div>
+                <div class="agent-card reveal reveal-delay-3">
+                    <span class="agent-icon">🟣</span>
+                    <div class="agent-name">OpenCode</div>
+                    <div class="agent-format">JSON</div>
+                    <span class="agent-path">~/.config/opencode/opencode.json</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ QUICK START ═══════════════ -->
+    <section class="section" id="quickstart">
+        <div class="container">
+            <span class="section-label reveal">quick start</span>
+            <h2 class="section-title reveal">Up and Running<br>in 30 Seconds</h2>
+            <p class="section-desc reveal">An interactive wizard walks you through everything. No config files to create
+                manually.</p>
+
+            <div class="steps-grid">
+                <div class="step-card reveal">
+                    <div class="step-num">1</div>
+                    <h3 class="step-title">Install</h3>
+                    <p class="step-desc">Install globally from npm.</p>
+                    <div class="code-block">
+                        <span class="dim">$</span> npm install -g agent-sync
+                    </div>
+                </div>
+                <div class="step-card reveal reveal-delay-1">
+                    <div class="step-num">2</div>
+                    <h3 class="step-title">Run</h3>
+                    <p class="step-desc">Launch the interactive wizard. It auto-detects your project and guides you
+                        through prompt, skills, and MCP setup.</p>
+                    <div class="code-block">
+                        <span class="dim">$</span> agent-sync
+                    </div>
+                </div>
+                <div class="step-card reveal reveal-delay-2">
+                    <div class="step-num">3</div>
+                    <h3 class="step-title">Done ✓</h3>
+                    <p class="step-desc">All 6 agents now share the same config. Use individual commands for targeted
+                        syncs.</p>
+                    <div class="code-block">
+                        <span class="dim">$</span> agent-sync mcp<br>
+                        <span class="dim">$</span> agent-sync skills<br>
+                        <span class="dim">$</span> agent-sync agents
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ MCP CONFIG ═══════════════ -->
+    <section class="section" id="mcp">
+        <div class="container">
+            <span class="section-label reveal">mcp sync targets</span>
+            <h2 class="section-title reveal">One Source →<br>Six Destinations</h2>
+            <p class="section-desc reveal">Your <code>~/.agent-sync/mcp.json</code> is automatically transformed and
+                written to each CLI's native format.</p>
+
+            <div class="config-table-wrap reveal">
+                <table class="config-table">
+                    <thead>
+                        <tr>
+                            <th>Target</th>
+                            <th>Config Path</th>
+                            <th>Format</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="target-name">Claude Code</td>
+                            <td class="target-path">~/.mcp.json</td>
+                            <td><span class="target-format">JSON mcpServers</span></td>
+                        </tr>
+                        <tr>
+                            <td class="target-name">Codex</td>
+                            <td class="target-path">~/.codex/config.toml</td>
+                            <td><span class="target-format">TOML [mcp_servers.*]</span></td>
+                        </tr>
+                        <tr>
+                            <td class="target-name">Gemini CLI</td>
+                            <td class="target-path">~/.gemini/settings.json</td>
+                            <td><span class="target-format">JSON mcpServers</span></td>
+                        </tr>
+                        <tr>
+                            <td class="target-name">OpenCode</td>
+                            <td class="target-path">~/.config/opencode/opencode.json</td>
+                            <td><span class="target-format">JSON mcp</span></td>
+                        </tr>
+                        <tr>
+                            <td class="target-name">Copilot</td>
+                            <td class="target-path">~/.copilot/mcp-config.json</td>
+                            <td><span class="target-format">JSON mcpServers</span></td>
+                        </tr>
+                        <tr>
+                            <td class="target-name">Antigravity</td>
+                            <td class="target-path">~/.gemini/antigravity/mcp_config.json</td>
+                            <td><span class="target-format">JSON mcpServers</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="config-location reveal">
+                <div class="config-info">
+                    <h3>Config Location</h3>
+                    <p>All agent-sync data lives in <code>~/.agent-sync/</code>. The unified MCP config is your single
+                        source of truth. Backups are created automatically when conflicts are detected.</p>
+                </div>
+                <div class="config-tree">
+                    <span class="folder">~/.agent-sync/</span><br>
+                    ├── <span class="file">mcp.json</span> <span class="note"># unified MCP source of truth</span><br>
+                    └── <span class="folder">backups/</span> <span class="note"># auto-backups on conflict</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-logo">agent<span class="accent">-sync</span></div>
+            <div class="footer-tagline">one config · six agents · zero friction</div>
+            <div class="footer-links">
+                <a href="https://github.com/lidge-jun/agent-sync" target="_blank">GitHub</a>
+                <a href="https://www.npmjs.com/package/@bitkyc08/agent-sync" target="_blank">npm</a>
+                <a href="https://github.com/lidge-jun/agent-sync/issues" target="_blank">Issues</a>
+            </div>
+            <div class="footer-copy">MIT © 2026 agent-sync</div>
+        </div>
+    </footer>
+
+    <script>
+        // ── Hub Lines ──
+        function drawHubLines() {
+            const svg = document.getElementById('hubLines');
+            const diagram = document.getElementById('hubDiagram');
+            const center = diagram.querySelector('.hub-center');
+            const nodes = diagram.querySelectorAll('.hub-node');
+
+            const dw = diagram.offsetWidth;
+            const dh = diagram.offsetHeight;
+            svg.setAttribute('viewBox', `0 0 ${dw} ${dh}`);
+
+            const cx = center.offsetLeft + center.offsetWidth / 2;
+            const cy = center.offsetTop + center.offsetHeight / 2;
+
+            let lines = '';
+            nodes.forEach((node, i) => {
+                const nx = node.offsetLeft + node.offsetWidth / 2;
+                const ny = node.offsetTop + node.offsetHeight / 2;
+                lines += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" style="animation-delay:${i * 0.3}s"/>`;
+            });
+            svg.innerHTML = lines;
+        }
+
+        // Draw on load and resize
+        window.addEventListener('load', drawHubLines);
+        window.addEventListener('resize', drawHubLines);
+
+        // ── Copy Install ──
+        function copyInstall() {
+            navigator.clipboard.writeText('npm i -g agent-sync').then(() => {
+                const block = document.getElementById('installBlock');
+                const hint = document.getElementById('copyHint');
+                block.classList.add('copied');
+                hint.textContent = 'copied!';
+                setTimeout(() => {
+                    block.classList.remove('copied');
+                    hint.textContent = 'copy';
+                }, 2000);
+            });
+        }
+
+        // ── Reveal on Scroll ──
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, {
+            threshold: 0.1,
+            rootMargin: '0px 0px -40px 0px'
+        });
+
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    </script>
+</body>
+
+</html>
