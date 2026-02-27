@@ -26,9 +26,16 @@ agent-sync agents       # Generate AGENTS.md in project
 
 ## What It Does
 
-### 1. AGENTS.md (Project-level)
-Auto-detects prompt files (`AGENTS.md`, `CLAUDE.md`, `COPILOT.md`, etc.) in your project.
-Writes a unified `AGENTS.md` that Codex, Copilot, and OpenCode discover automatically.
+### 1. Custom Instructions (Project-level)
+Auto-detects prompt files (`AGENTS.md`, `CLAUDE.md`, `COPILOT.md`, `CODEX.md`, `.agents/rules/*.md`, etc.) in your project.
+Writes your unified instructions to **4 targets simultaneously**:
+
+| Target | Path | Agent |
+|--------|------|-------|
+| `AGENTS.md` | project root | Codex / OpenCode |
+| `CLAUDE.md` | project root | Claude Code |
+| `copilot-instructions.md` | `.github/` | Copilot |
+| `agent-sync.md` | `.agents/rules/` | Antigravity |
 
 ### 2. Skills Sync (Project-level)
 Creates symlinks so all agents find the same skills:

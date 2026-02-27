@@ -977,8 +977,8 @@
         </div>
 
         <h1 class="hero-tagline">One Config.<br><span class="accent">Six Agents.</span></h1>
-        <p class="hero-sub">Sync MCP servers, skills, and AGENTS.md across every AI coding CLI — from a single source of
-            truth.</p>
+        <p class="hero-sub">Sync custom instructions, skills, and MCP servers across every AI coding CLI — write once,
+            all six agents get the same config simultaneously.</p>
 
         <div class="agent-strip">
             <span class="agent-chip">Claude Code</span>
@@ -1030,27 +1030,41 @@
             <div class="how-grid">
                 <div class="how-card reveal">
                     <div class="how-icon">📄</div>
-                    <h3 class="how-title">AGENTS.md</h3>
-                    <p class="how-desc">Auto-detects prompt files in your project — <code>AGENTS.md</code>,
-                        <code>CLAUDE.md</code>, <code>COPILOT.md</code> — and writes a unified AGENTS.md that every
-                        agent discovers automatically.
-                    </p>
+                    <h3 class="how-title">Custom Instructions</h3>
+                    <p class="how-desc">Auto-detects prompt files (<code>AGENTS.md</code>, <code>CLAUDE.md</code>,
+                        <code>COPILOT.md</code>, <code>CODEX.md</code>, etc.) and writes your unified instructions to
+                        <strong>4 targets simultaneously</strong>:</p>
+                    <div class="code-block" style="font-size:11px; margin-top:12px; padding:12px 16px; line-height:1.6">
+                        <span class="dim">→</span> AGENTS.md <span class="dim">(Codex / OpenCode)</span><br>
+                        <span class="dim">→</span> CLAUDE.md <span class="dim">(Claude Code)</span><br>
+                        <span class="dim">→</span> .github/copilot-instructions.md<br>
+                        <span class="dim">→</span> .agents/rules/agent-sync.md <span class="dim">(Antigravity)</span>
+                    </div>
                     <span class="how-scope">project-level</span>
                 </div>
                 <div class="how-card reveal reveal-delay-1">
                     <div class="how-icon">🔗</div>
                     <h3 class="how-title">Skills Sync</h3>
-                    <p class="how-desc">Creates symlinks so all agents find the same skills. One
-                        <code>.agent/skills/</code> source powers <code>.agents/</code>, <code>.claude/</code>, and
-                        every other config directory.
-                    </p>
+                    <p class="how-desc">One <code>.agent/skills/</code> directory is the source of truth. Symlinks are
+                        created so every agent discovers the same skills — no duplication, no drift.</p>
+                    <div class="code-block" style="font-size:11px; margin-top:12px; padding:12px 16px; line-height:1.6">
+                        <span class="dim">src</span> .agent/skills/ <span class="dim">(real files)</span><br>
+                        <span class="dim"> →</span> .agents/skills/ <span class="dim">(symlink)</span><br>
+                        <span class="dim"> →</span> .claude/skills/ <span class="dim">(symlink)</span>
+                    </div>
                     <span class="how-scope">project-level</span>
                 </div>
                 <div class="how-card reveal reveal-delay-2">
                     <div class="how-icon">🌐</div>
-                    <h3 class="how-title">MCP Config</h3>
-                    <p class="how-desc">One <code>~/.agent-sync/mcp.json</code> is the single source of truth. Synced to
-                        6 different CLI config files — JSON, TOML, and beyond.</p>
+                    <h3 class="how-title">MCP Servers</h3>
+                    <p class="how-desc">One <code>~/.agent-sync/mcp.json</code> is synced to <strong>6 different CLI
+                            config files</strong> with automatic format conversion — JSON for most, TOML for Codex.</p>
+                    <div class="code-block" style="font-size:11px; margin-top:12px; padding:12px 16px; line-height:1.6">
+                        <span class="dim">src</span> ~/.agent-sync/mcp.json<br>
+                        <span class="dim"> →</span> ~/.mcp.json <span class="dim">(Claude)</span><br>
+                        <span class="dim"> →</span> ~/.codex/config.toml <span class="dim">(TOML)</span><br>
+                        <span class="dim"> →</span> 4 more targets…
+                    </div>
                     <span class="how-scope">global</span>
                 </div>
             </div>
@@ -1062,8 +1076,8 @@
         <div class="container">
             <span class="section-label reveal">supported agents</span>
             <h2 class="section-title reveal">Works With<br>Every Major CLI</h2>
-            <p class="section-desc reveal">From Anthropic to OpenAI to Google — if it's an AI coding CLI, agent-sync has
-                it covered.</p>
+            <p class="section-desc reveal">Each agent gets its own native config format — instructions, skills, and MCP
+                servers all synced at once.</p>
 
             <div class="agents-grid">
                 <div class="agent-card reveal">
