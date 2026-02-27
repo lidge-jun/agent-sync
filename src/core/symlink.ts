@@ -53,7 +53,7 @@ export function ensureSymlinkSafe(
                 }
                 // Different target — update
                 fs.unlinkSync(linkPath);
-                fs.symlinkSync(target, linkPath);
+                createLinkWithFallback(target, linkPath);
                 return { status: 'ok', action: 'replace_symlink', name, linkPath, target };
             }
 
@@ -64,16 +64,41 @@ export function ensureSymlinkSafe(
 
             // Backup and replace
             movePathToBackup(linkPath, context);
-            fs.symlinkSync(target, linkPath);
+            createLinkWithFallback(target, linkPath);
             return { status: 'ok', action: 'backup_and_link', name, linkPath, target };
         }
 
         // Nothing exists — create
-        fs.symlinkSync(target, linkPath);
+        createLinkWithFallback(target, linkPath);
         return { status: 'ok', action: 'created', name, linkPath, target };
     } catch (e: unknown) {
         return { status: 'error', action: 'error', name, linkPath, target, error: (e as Error).message };
     }
+}
+
+/**
+ * Try symlink → junction (Windows) → directory copy fallback.
+ * WSL/macOS/Linux: symlink always works.
+ * Native Windows: symlink needs Developer Mode; junction works without it;
+ *                 copy is the last resort.
+ */
+function createLinkWithFallback(target: string, linkPath: string): void {
+    // 1. Try regular symlink
+    try {
+        fs.symlinkSync(target, linkPath);
+        return;
+    } catch { /* continue to fallback */ }
+
+    // 2. Try junction (Windows only, no admin required)
+    if (process.platform === 'win32') {
+        try {
+            fs.symlinkSync(target, linkPath, 'junction');
+            return;
+        } catch { /* continue to fallback */ }
+    }
+
+    // 3. Fall back to directory copy
+    copyDirRecursive(target, linkPath);
 }
 
 function movePathToBackup(pathToMove: string, context: BackupContext) {
