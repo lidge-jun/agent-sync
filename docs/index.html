@@ -423,6 +423,38 @@
             border-radius: 4px;
         }
 
+        /* Agent name strip */
+        .agent-strip {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 32px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+        }
+
+        .agent-strip .agent-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            color: var(--text);
+            white-space: nowrap;
+            transition: color 0.2s;
+        }
+
+        .agent-strip .agent-chip:hover {
+            color: var(--accent-light);
+        }
+
+        .agent-strip .sep {
+            color: var(--text-muted);
+            font-size: 8px;
+            padding: 0 2px;
+        }
+
         /* Scroll indicator */
         .scroll-hint {
             position: absolute;
@@ -948,6 +980,20 @@
         <p class="hero-sub">Sync MCP servers, skills, and AGENTS.md across every AI coding CLI — from a single source of
             truth.</p>
 
+        <div class="agent-strip">
+            <span class="agent-chip">Claude Code</span>
+            <span class="sep">·</span>
+            <span class="agent-chip">Codex CLI</span>
+            <span class="sep">·</span>
+            <span class="agent-chip">Copilot</span>
+            <span class="sep">·</span>
+            <span class="agent-chip">Gemini CLI</span>
+            <span class="sep">·</span>
+            <span class="agent-chip">Antigravity</span>
+            <span class="sep">·</span>
+            <span class="agent-chip">OpenCode</span>
+        </div>
+
         <div class="hero-install">
             <div class="install-block" id="installBlock" onclick="copyInstall()">
                 <span><span class="dollar">$</span> npm i -g agent-sync</span>
@@ -987,7 +1033,8 @@
                     <h3 class="how-title">AGENTS.md</h3>
                     <p class="how-desc">Auto-detects prompt files in your project — <code>AGENTS.md</code>,
                         <code>CLAUDE.md</code>, <code>COPILOT.md</code> — and writes a unified AGENTS.md that every
-                        agent discovers automatically.</p>
+                        agent discovers automatically.
+                    </p>
                     <span class="how-scope">project-level</span>
                 </div>
                 <div class="how-card reveal reveal-delay-1">
@@ -995,7 +1042,8 @@
                     <h3 class="how-title">Skills Sync</h3>
                     <p class="how-desc">Creates symlinks so all agents find the same skills. One
                         <code>.agent/skills/</code> source powers <code>.agents/</code>, <code>.claude/</code>, and
-                        every other config directory.</p>
+                        every other config directory.
+                    </p>
                     <span class="how-scope">project-level</span>
                 </div>
                 <div class="how-card reveal reveal-delay-2">

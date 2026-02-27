@@ -1,6 +1,6 @@
 {
     "name": "@bitkyc08/agent-sync",
-    "version": "0.1.2",
+    "version": "0.1.4",
     "description": "Sync MCP, skills, and AGENTS.md across all AI coding agents (Claude, Codex, Copilot, Gemini, Antigravity, OpenCode)",
     "type": "module",
     "bin": {
@@ -18,7 +18,8 @@
         "build": "tsc",
         "dev": "tsx src/cli.ts",
         "test": "vitest run",
-        "prepublishOnly": "npm run build"
+        "bump": "node scripts/bump.cjs",
+        "prepublishOnly": "npm run bump && npm run build"
     },
     "keywords": [
         "ai",

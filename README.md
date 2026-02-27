@@ -2,7 +2,9 @@
 
 > Sync MCP, skills, and AGENTS.md across **all** AI coding agents — one command.
 
-Supports: **Claude Code** · **Codex** · **Copilot** · **Gemini CLI** · **Antigravity** · **OpenCode**
+Supports: **Claude Code** · **Codex CLI** · **Copilot** · **Gemini CLI** · **Antigravity** · **OpenCode**
+
+All six agents are synced **simultaneously** with a single command — one config file, one run, all updated at once.
 
 ## Install
 
