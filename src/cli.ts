@@ -19,7 +19,7 @@ import { detectPromptFiles, generateAgentsMd } from './core/agents-md.js';
 import { detectSkillSources, syncSkills, listSkills } from './core/skill-sync.js';
 import { detectMcpConfigs, loadMcpConfig, saveMcpConfig, syncToAll, importFromClaude } from './core/mcp-sync.js';
 
-const VERSION = '0.1.6';
+const VERSION = '0.1.7';
 const cwd = process.cwd();
 
 // ─── Subcommand routing ───────────────────────────
