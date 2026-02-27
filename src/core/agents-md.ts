@@ -2,7 +2,11 @@
  * core/agents-md.ts — AGENTS.md generation (project-level)
  *
  * Auto-detects prompt template files from project.
- * Writes AGENTS.md to project root for Codex/Copilot/OpenCode discovery.
+ * Writes prompt content to all supported agent formats:
+ *   - AGENTS.md          (Codex / OpenCode)
+ *   - CLAUDE.md          (Claude Code)
+ *   - .github/copilot-instructions.md  (Copilot)
+ *   - .agents/rules/agent-sync.md      (Antigravity)
  */
 import fs from 'node:fs';
 import { join, basename } from 'node:path';
@@ -19,7 +23,7 @@ export interface PromptCandidate {
 export function detectPromptFiles(cwd: string): PromptCandidate[] {
     const candidates: PromptCandidate[] = [];
 
-    // Only check files directly in project root (no subdirectory scanning)
+    // Check known prompt files in project root
     const patterns = [
         'AGENTS.md',
         'CLAUDE.md',
@@ -43,6 +47,26 @@ export function detectPromptFiles(cwd: string): PromptCandidate[] {
             }
         } catch { /* skip */ }
     }
+
+    // Check Antigravity rules directory
+    const rulesDir = join(cwd, '.agents', 'rules');
+    try {
+        const files = fs.readdirSync(rulesDir);
+        for (const f of files) {
+            if (f.endsWith('.md')) {
+                const fullPath = join(rulesDir, f);
+                const stat = fs.statSync(fullPath);
+                if (stat.isFile() && stat.size > 0) {
+                    candidates.push({
+                        label: `.agents/rules/${f}`,
+                        path: fullPath,
+                        sizeKB: Math.round(stat.size / 1024),
+                    });
+                }
+            }
+        }
+    } catch { /* skip */ }
+
     return candidates;
 }
 
@@ -55,7 +79,10 @@ export interface AgentsMdResult {
 
 export function generateAgentsMd(cwd: string, content: string): AgentsMdResult {
     const targets = [
-        join(cwd, 'AGENTS.md'),
+        join(cwd, 'AGENTS.md'),                              // Codex / OpenCode
+        join(cwd, 'CLAUDE.md'),                               // Claude Code
+        join(cwd, '.github', 'copilot-instructions.md'),      // Copilot
+        join(cwd, '.agents', 'rules', 'agent-sync.md'),       // Antigravity
     ];
 
     for (const target of targets) {
@@ -66,3 +93,4 @@ export function generateAgentsMd(cwd: string, content: string): AgentsMdResult {
 
     return { targets, size: content.length };
 }
+
