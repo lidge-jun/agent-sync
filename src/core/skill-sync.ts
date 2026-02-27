@@ -8,7 +8,7 @@
  *   {cwd}/.claude/skills/  → .agent/skills (symlink)
  */
 import fs from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { ensureSymlinkSafe, createBackupContext, type SymlinkResult } from './symlink.js';
 import { log } from '../utils/log.js';
 
@@ -72,9 +72,23 @@ export interface SkillSyncResult {
     links: SymlinkResult[];
 }
 
+// ─── Resolve paths safely (ELOOP-aware) ──────────
+
+function safeRealPath(p: string): string {
+    try {
+        return fs.realpathSync(p);
+    } catch {
+        // ELOOP (circular) or ENOENT (missing) — fall back to string resolution
+        return resolve(p);
+    }
+}
+
 export function syncSkills(cwd: string, sourcePath: string): SkillSyncResult {
     const backupContext = createBackupContext();
     const links: SymlinkResult[] = [];
+
+    // Resolve source to real path to avoid symlink confusion
+    const resolvedSource = safeRealPath(sourcePath);
 
     // Target paths within the project
     const targets: [string, string][] = [
@@ -83,11 +97,15 @@ export function syncSkills(cwd: string, sourcePath: string): SkillSyncResult {
         ['claude_skills', join(cwd, '.claude', 'skills')],
     ];
 
-    // Determine canonical location (first real directory or the source itself)
+    // Determine canonical location
     const canonicalPath = join(cwd, '.agent', 'skills');
+    const resolvedCanonical = safeRealPath(canonicalPath);
 
     for (const [name, targetPath] of targets) {
-        if (targetPath === sourcePath) {
+        const resolvedTarget = safeRealPath(targetPath);
+
+        // Compare RESOLVED paths, not string paths
+        if (resolvedTarget === resolvedSource) {
             // Source IS this path — skip
             links.push({
                 status: 'skip', action: 'is_source', name, linkPath: targetPath, target: sourcePath,
@@ -95,7 +113,7 @@ export function syncSkills(cwd: string, sourcePath: string): SkillSyncResult {
             continue;
         }
 
-        if (targetPath === canonicalPath && sourcePath !== canonicalPath) {
+        if (resolvedTarget === resolvedCanonical && resolvedSource !== resolvedCanonical) {
             // .agent/skills is the canonical target — symlink to source
             links.push(ensureSymlinkSafe(sourcePath, targetPath, {
                 onConflict: 'backup', backupContext, name,

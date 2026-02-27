@@ -3,7 +3,7 @@
  * Extracted from cli-jaw lib/mcp-sync.ts
  */
 import fs from 'node:fs';
-import { join, dirname, resolve } from 'node:path';
+import { join, dirname, resolve, basename } from 'node:path';
 import os from 'node:os';
 import { AGENT_SYNC_HOME } from './config.js';
 
@@ -20,6 +20,54 @@ export function createBackupContext(): BackupContext {
 export function resolveSymlinkTarget(linkPath: string, rawTarget: string): string {
     if (rawTarget.startsWith('/')) return rawTarget;
     return resolve(dirname(linkPath), rawTarget);
+}
+
+/**
+ * Detect if creating a symlink linkPath → target would form a cycle.
+ * Handles ELOOP (already-circular) targets and deep chains.
+ */
+export function wouldCreateCycle(target: string, linkPath: string): boolean {
+    try {
+        // Resolve target — ELOOP means it's already part of a circular chain
+        let realTarget: string;
+        try {
+            realTarget = fs.realpathSync(target);
+        } catch (e: unknown) {
+            if ((e as NodeJS.ErrnoException).code === 'ELOOP') return true;
+            // ENOENT or other — target doesn't exist yet, resolve as string
+            realTarget = resolve(target);
+        }
+
+        // Resolve linkPath's parent (linkPath itself may not exist yet)
+        let realLinkParent: string;
+        try {
+            realLinkParent = fs.realpathSync(dirname(linkPath));
+        } catch {
+            realLinkParent = resolve(dirname(linkPath));
+        }
+        const resolvedLinkPath = join(realLinkParent, basename(linkPath));
+
+        // Direct cycle: target resolves to linkPath itself
+        if (realTarget === resolvedLinkPath) return true;
+
+        // Walk the symlink chain from target, check if any hop leads back to linkPath
+        let current = target;
+        const visited = new Set<string>();
+        const MAX_DEPTH = 40; // SYMLOOP_MAX on most systems
+        let depth = 0;
+        while (depth++ < MAX_DEPTH) {
+            const stat = fs.lstatSync(current, { throwIfNoEntry: false } as any);
+            if (!stat || !stat.isSymbolicLink()) break;
+            current = resolveSymlinkTarget(current, fs.readlinkSync(current));
+            if (visited.has(current)) return true;
+            if (current === resolvedLinkPath) return true;
+            visited.add(current);
+        }
+        if (depth >= MAX_DEPTH) return true; // too deep = likely cycle
+        return false;
+    } catch {
+        return false; // genuinely unknown, proceed cautiously
+    }
 }
 
 export interface SymlinkResult {
@@ -42,6 +90,15 @@ export function ensureSymlinkSafe(
 
     try {
         fs.mkdirSync(dirname(linkPath), { recursive: true });
+
+        // Cycle guard — covers ALL creation paths below
+        if (wouldCreateCycle(target, linkPath)) {
+            return {
+                status: 'error', action: 'cycle_detected', name, linkPath, target,
+                error: `Circular symlink: ${linkPath} → ${target} would create a loop`,
+            };
+        }
+
         const stat = fs.lstatSync(linkPath, { throwIfNoEntry: false } as any);
 
         if (stat) {
