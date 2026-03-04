@@ -83,11 +83,38 @@ function safeRealPath(p: string): string {
     }
 }
 
+/**
+ * Returns true if `p` (possibly a symlink) resolves to the SAME real directory
+ * as `realSource`. Uses lstat to avoid ELOOP when p itself is a circular link.
+ */
+function isSameRealDir(p: string, realSource: string): boolean {
+    const stat = fs.lstatSync(p, { throwIfNoEntry: false } as any);
+    if (!stat) return false;
+    if (!stat.isSymbolicLink()) {
+        // Real entry — compare inodes instead of paths to handle hardlinks/bind-mounts
+        try {
+            const statReal = fs.statSync(realSource);
+            return stat.ino === statReal.ino && stat.dev === statReal.dev;
+        } catch { return false; }
+    }
+    // It's a symlink — follow it safely
+    try {
+        const resolved = fs.realpathSync(p);
+        return resolved === realSource;
+    } catch (e: unknown) {
+        // ELOOP means it's already circular — definitely NOT the same real dir
+        if ((e as NodeJS.ErrnoException).code === 'ELOOP') return false;
+        return false;
+    }
+}
+
 export function syncSkills(cwd: string, sourcePath: string): SkillSyncResult {
     const backupContext = createBackupContext();
     const links: SymlinkResult[] = [];
 
-    // Resolve source to real path to avoid symlink confusion
+    // Resolve source to real path.
+    // NOTE: safeRealPath falls back to resolve() on ELOOP, so we must NOT rely
+    // solely on string comparison for is_source detection — use isSameRealDir.
     const resolvedSource = safeRealPath(sourcePath);
 
     // Target paths within the project
@@ -97,24 +124,24 @@ export function syncSkills(cwd: string, sourcePath: string): SkillSyncResult {
         ['claude_skills', join(cwd, '.claude', 'skills')],
     ];
 
-    // Determine canonical location
+    // Determine canonical location (.agent/skills is the stable reference)
     const canonicalPath = join(cwd, '.agent', 'skills');
     const resolvedCanonical = safeRealPath(canonicalPath);
 
     for (const [name, targetPath] of targets) {
-        const resolvedTarget = safeRealPath(targetPath);
-
-        // Compare RESOLVED paths, not string paths
-        if (resolvedTarget === resolvedSource) {
-            // Source IS this path — skip
+        // Use isSameRealDir to detect source even through ELOOP or inode equality
+        if (isSameRealDir(targetPath, resolvedSource)) {
+            // Target IS the real source directory — never overwrite it
             links.push({
                 status: 'skip', action: 'is_source', name, linkPath: targetPath, target: sourcePath,
             });
             continue;
         }
 
+        const resolvedTarget = safeRealPath(targetPath);
+
         if (resolvedTarget === resolvedCanonical && resolvedSource !== resolvedCanonical) {
-            // .agent/skills is the canonical target — symlink to source
+            // .agent/skills-style path: symlink → source
             links.push(ensureSymlinkSafe(sourcePath, targetPath, {
                 onConflict: 'backup', backupContext, name,
             }));
